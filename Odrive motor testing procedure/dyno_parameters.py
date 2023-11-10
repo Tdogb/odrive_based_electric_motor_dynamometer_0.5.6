@@ -11,7 +11,7 @@ TODO
 
 """
 # General
-num_odrives                             = 2                 # Number of odrive that you are using
+num_odrives                             = 1                 # Number of odrive that you are using
 test_motor_axis                         = 1                 # The axis which thest motor is connected, either 0 or 1
 absorber_motor_axis                     = 0                 # The axis which the absorber motor is connected, either 0 or 1
 calibrate_on_run                        = True              # Motors will calibrate when test started if True
@@ -58,7 +58,7 @@ efficiency_current_max                  = 24               # Absorber current ma
 
 # Absorber motor Odrive
 class Absorber_motor:
-    serial_number                       = 35795122466891    # Unique serial number of odrive to be used. Can be found using Odrivetool 'odrv0.serial_number'
+    serial_number                       = 59731055947824    # Unique serial number of odrive to be used. Can be found using Odrivetool 'odrv0.serial_number'
     brake_resistance                    = 0.5               # Default = 0.5 [Ohm] Resistance of the brake resistor connected to test motor odrive
     calibration_current                 = 20                # Default = 10 [A]  Current used during motor calibration
     current_lim                         = 60                # Default = 10 [A] Peak current supplied to the motor when in use
@@ -70,8 +70,8 @@ class Absorber_motor:
 
 # Test motor Odrive
 class Test_motor:
-    serial_number                       = 53237081453109    # Unique serial number of odrive to be used. Can be found using Odrivetool 'odrv0.serial_number'        
-    brake_resistance                    = 0.47              # Default = 0.5 [Ohm] Resistance of the brake resistor connected to test motor odrive
+    serial_number                       = 59731055947824    # Unique serial number of odrive to be used. Can be found using Odrivetool 'odrv0.serial_number'        
+    brake_resistance                    = 0.5              # Default = 0.5 [Ohm] Resistance of the brake resistor connected to test motor odrive
     calibration_current                 = 20                # Default = 10 [A]  Current used during motor calibration
     current_lim                         = 60                # Default = 10 [A] Peak current supplied to the motor when in use
     pole_pairs                          = 7                 # Default = 7 [pole pairs]  Number of pole pairs. Count number of magnets and divide by 2

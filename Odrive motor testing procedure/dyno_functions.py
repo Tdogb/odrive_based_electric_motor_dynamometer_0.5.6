@@ -100,7 +100,7 @@ def odrive_startup():
     print('### Beginning Odrive startup ###')
     print('Looking for', num_odrives, 'Odrives...')
 
-    odrives = odrive.find_any(timeout = 30, find_multiple=num_odrives)
+    odrives = [odrive.find_any(timeout = 30)]
     num_odrive_found = len(odrives)
     
     if num_odrive_found != num_odrives:
@@ -117,6 +117,8 @@ def odrive_startup():
     odrives_assigned = 0
 
     for odrv in odrives:
+        print(Test_motor().serial_number)
+        print(odrv.serial_number)
         if odrv.serial_number == Test_motor().serial_number:
             test_motor_odrive = odrv
             if test_motor_axis == 0:
@@ -134,9 +136,9 @@ def odrive_startup():
             odrives_assigned += 1
             print('Absorber motor assigned to serial number', absorber_motor_odrive.serial_number)
     
-    if odrives_assigned != num_odrives:
-        print('Listed odrives serial numbers do not match those in py')
-        exit()
+    # if odrives_assigned != num_odrives:
+    #     print('Listed odrives serial numbers do not match those in py')
+    #     exit()
 
     # Set Odrive parameters as listed in dyno_parameters.py
     print('Setting parameters...')
@@ -189,14 +191,16 @@ def odrive_shutdown():
     print("### Shutting down odrives ###")
 
     #Absorber motor and test motor shutdown
-    absorber_motor_odrive_axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
-    test_motor_odrive_axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
-    absorber_motor_odrive_axis.controller.vel_ramp_enable = True
-    test_motor_odrive_axis.controller.vel_ramp_enable = True
+    absorber_motor_odrive_axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+    test_motor_odrive_axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+    # absorber_motor_odrive_axis.controller.vel_ramp_enable = True
+    # test_motor_odrive_axis.controller.vel_ramp_enable = True
+    absorber_motor_odrive_axis.controller.input_mode = InputMode.VEL_RAMP
+    test_motor_odrive_axis.controller.input_mode = InputMode.VEL_RAMP
     absorber_motor_odrive_axis.controller.config.vel_ramp_rate = shutdown_ramp_speed
     test_motor_odrive_axis.controller.config.vel_ramp_rate = shutdown_ramp_speed
-    absorber_motor_odrive_axis.controller.vel_ramp_target = 0
-    test_motor_odrive_axis.controller.vel_ramp_target = 0
+    absorber_motor_odrive_axis.controller.input_vel = 0
+    test_motor_odrive_axis.controller.input_vel = 0
 
     # wait for motors to slow down.
     print("Slowing down motors...")
@@ -204,15 +208,15 @@ def odrive_shutdown():
         time.sleep(0.5)
     
     print("Motors stopped")
-    absorber_motor_odrive_axis.controller.vel_ramp_enable = False
-    test_motor_odrive_axis.controller.vel_ramp_enable = False
+    # absorber_motor_odrive_axis.controller.vel_ramp_enable = False
+    # test_motor_odrive_axis.controller.vel_ramp_enable = False
 
     # Prevent motors being set to position zero at full speed when set to position control mode.
     print("Setting to position control mode")
     absorber_motor_odrive_axis.controller.pos_setpoint = absorber_motor_odrive_axis.encoder.pos_estimate 
     test_motor_odrive_axis.controller.pos_setpoint = absorber_motor_odrive_axis.encoder.pos_estimate 
-    absorber_motor_odrive_axis.controller.config.control_mode = CTRL_MODE_POSITION_CONTROL
-    test_motor_odrive_axis.controller.config.control_mode = CTRL_MODE_POSITION_CONTROL
+    absorber_motor_odrive_axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
+    test_motor_odrive_axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
     
     if idle_on_finish == True or emergency_stop_flag == True:
         # Calibrate motor and wait for it to finish
@@ -346,7 +350,7 @@ def no_load_speed_test():
         odrive = absorber_motor_odrive
 
     odrive.axis0.controller.config.vel_limit = rpm_to_cpr(no_load_max_motor_speed, odrive)
-    odrive.axis0.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL 
+    odrive.axis0.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL 
     odrive.axis0.controller.vel_setpoint = 0 # Stop motor if it isn't already stopped [counts/s]
     while odrive.axis0.encoder.vel_estimate != 0:
         time.sleep(0.1)
@@ -437,11 +441,13 @@ def test_motor_efficiency_map():
     print('### Starting test motor efficiency mapping ###')
 
     print('Setting test specific parameters...')
-    test_motor_odrive_axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
+    test_motor_odrive_axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
     test_motor_odrive_axis.controller.config.vel_limit = rpm_to_cpr(efficiency_speed_max, test_motor_odrive) * 1.5 # 1.5x added to prevent ERROR_OVERSPEED due to load changes on the motor.
-    test_motor_odrive_axis.controller.vel_ramp_enable = True
+    # test_motor_odrive_axis.controller.vel_ramp_enable = True
+    test_motor_odrive_axis.controller.config.input_mode = InputMode.VEL_RAMP
+    
 
-    absorber_motor_odrive_axis.controller.config.control_mode = CTRL_MODE_CURRENT_CONTROL
+    absorber_motor_odrive_axis.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
     absorber_motor_odrive_axis.controller.config.vel_limit = rpm_to_cpr(efficiency_speed_max, test_motor_odrive) * 1.5 # 1.5x added to prevent ERROR_OVERSPEED due to load changes on the motor.
     absorber_motor_odrive_axis.motor.config.current_lim = efficiency_current_max
     
@@ -450,7 +456,7 @@ def test_motor_efficiency_map():
 
     for i in range(int(efficiency_speed_max / efficiency_speed_step)):
         set_speed = rpm_to_cpr((i + 1) * efficiency_speed_step, test_motor_odrive) # +1 added so starting speed != 0
-        test_motor_odrive_axis.controller.vel_ramp_target = set_speed
+        test_motor_odrive_axis.controller.input_vel = set_speed
         # wait for set_speed to be reached
         wait_num = 0
         while test_motor_odrive_axis.encoder.vel_estimate <= (set_speed * 0.98):
@@ -466,16 +472,16 @@ def test_motor_efficiency_map():
             print(str(i) + '.' + str(j), int((set_speed / Test_motor.encoder_cpr) * 60), set_current)
             
             # slowly increase or decrease current_setpoint to allow time for test motor PID to adjust.
-            current_difference = set_current - absorber_motor_odrive_axis.controller.current_setpoint
+            current_difference = set_current - absorber_motor_odrive_axis.controller.input_torque
             while -1 > current_difference > 1: # Only need to increase current slowly if difference > 1 A
                 if current_difference > 0:
-                    absorber_motor_odrive_axis.controller.current_setpoint += 1
+                    absorber_motor_odrive_axis.controller.input_torque += 1
                     time.sleep(0.2)
                 if current_difference < 0:
-                    absorber_motor_odrive_axis.controller.current_setpoint -= 1
+                    absorber_motor_odrive_axis.controller.input_torque -= 1
                     time.sleep(0.2)
-                current_difference = set_current - absorber_motor_odrive_axis.controller.current_setpoint
-            absorber_motor_odrive_axis.controller.current_setpoint = set_current # add the remainder, if any.
+                current_difference = set_current - absorber_motor_odrive_axis.controller.input_torque
+            absorber_motor_odrive_axis.controller.input_torque = set_current # add the remainder, if any.
 
             time.sleep(stabilise_time)
             write_values(measure_values())
